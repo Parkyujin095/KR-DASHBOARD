@@ -1,6 +1,9 @@
 *.py
-*.py
 *.xlsm
 *.xlsx
 *.bat
 __pycache__/
+config.py
+logs/
+config.py
+logs/
