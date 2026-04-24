@@ -1,0 +1,9 @@
+*.py
+*.xlsm
+*.xlsx
+*.bat
+__pycache__/
+config.py
+logs/
+*.ps1
+sales_dashboard_dev.html
