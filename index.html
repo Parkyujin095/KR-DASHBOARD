@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KR 파트너 대시보드</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Nanum Square", "NanumSquare", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #eef0f4;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* ── Lock Gate ── */
+#__gate__ {
+  position: fixed; inset: 0;
+  background: #eef0f4;
+  z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+#__gate__.hidden { display: none; }
+.gate-card {
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  padding: 44px 48px;
+  width: min(100%, 420px);
+  text-align: center;
+}
+.gate-lock {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #EEF2FF;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.gate-lock svg { width: 28px; height: 28px; stroke: #1B3A6B; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gate-title { font-size: 22px; font-weight: 800; color: #1a2236; margin: 0 0 6px; }
+.gate-desc { font-size: 14px; color: #9ca3af; margin: 0 0 28px; }
+.gate-label { display: block; font-size: 13px; font-weight: 700; color: #1f2937; text-align: left; margin-bottom: 8px; }
+.gate-input-wrap { position: relative; margin-bottom: 20px; }
+.gate-input {
+  width: 100%; padding: 13px 44px 13px 14px;
+  border: 1.5px solid #e5e7eb; border-radius: 10px;
+  font-size: 15px; background: #f9fafb; color: #1f2937;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.gate-input:focus { outline: none; border-color: #1B3A6B; background: #fff; }
+.gate-input.err { border-color: #dc2626; animation: shake 0.3s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+.gate-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px; color: #9ca3af; line-height: 0;
+}
+.gate-eye svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.gate-submit {
+  width: 100%; background: #1B3A6B; color: #fff;
+  border: none; border-radius: 10px;
+  padding: 14px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s, transform 0.08s;
+}
+.gate-submit:hover { background: #15306b; }
+.gate-submit:active { transform: scale(0.99); }
+.gate-submit:disabled { background: #9ca3af; cursor: not-allowed; }
+.gate-error { margin-top: 14px; color: #dc2626; font-size: 13px; font-weight: 700; min-height: 20px; }
+
+/* ── Hub Portal ── */
+.portal-wrap {
+  background: #f4f5f7;
+  border-radius: 16px;
+  width: min(100%, 760px);
+  padding: 40px 44px 44px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+.page-header { margin-bottom: 32px; }
+.page-header h2 { font-size: 24px; font-weight: 800; color: #1a2236; margin-bottom: 6px; }
+.page-header p { font-size: 13px; color: #6b7280; }
+.page-header .badge {
+  display: inline-block; background: #EEF2FF; color: #1B3A6B;
+  border: 0.5px solid #c7d2fe; border-radius: 20px;
+  font-size: 11px; font-weight: 700; padding: 3px 12px;
+  margin-bottom: 10px; letter-spacing: 0.04em;
+}
+
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+
+.nav-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  padding: 28px 26px; cursor: pointer;
+  transition: border-color 0.18s, transform 0.14s, box-shadow 0.18s;
+  display: flex; flex-direction: column; gap: 18px; text-align: left;
+  text-decoration: none; color: inherit;
+}
+.nav-card:hover { border-color: #1B3A6B; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(27,58,107,0.12); }
+.nav-card:active { transform: scale(0.99); }
+
+.card-icon { width: 44px; height: 44px; background: #EEF2FF; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-icon svg { width: 22px; height: 22px; stroke: #1B3A6B; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.card-tag { font-size: 10px; font-weight: 700; color: #6b7280; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.card-title { font-size: 16px; font-weight: 800; color: #1a2236; line-height: 1.4; }
+.card-desc { font-size: 12px; color: #9ca3af; margin-top: 5px; line-height: 1.7; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid #f3f4f6; }
+.card-footer-label { font-size: 11px; color: #9ca3af; }
+.card-arrow { width: 30px; height: 30px; background: #1B3A6B; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-arrow svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.logout-btn {
+  margin-top: 28px; text-align: center;
+}
+.logout-btn button {
+  background: none; border: 1px solid #e5e7eb; border-radius: 8px;
+  color: #9ca3af; font-size: 12px; padding: 7px 18px; cursor: pointer;
+  font-family: inherit; transition: color 0.15s, border-color 0.15s;
+}
+.logout-btn button:hover { color: #6b7280; border-color: #6b7280; }
+</style>
+</head>
+<body>
+
+<!-- Lock Gate -->
+<div id="__gate__" role="dialog" aria-modal="true">
+  <form class="gate-card" id="__gateForm__" autocomplete="off">
+    <div class="gate-lock">
+      <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    </div>
+    <h1 class="gate-title">KR 파트너 대시보드</h1>
+    <p class="gate-desc">비밀번호를 입력해주세요.</p>
+    <label class="gate-label" for="__gatePwd__">비밀번호</label>
+    <div class="gate-input-wrap">
+      <input type="password" class="gate-input" id="__gatePwd__"
+             placeholder="비밀번호를 입력하세요" autocomplete="current-password" required/>
+      <button type="button" class="gate-eye" id="__gateEye__" aria-label="비밀번호 표시/숨김">
+        <svg id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M10.73 10.73a3 3 0 0 0 4.24 4.24"/></svg>
+        <svg id="eye-on"  viewBox="0 0 24 24" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <button type="submit" class="gate-submit" id="__gateBtn__">확인</button>
+    <div class="gate-error" id="__gateErr__"></div>
+  </form>
+</div>
+
+<!-- Hub Portal (shown after auth) -->
+<div class="portal-wrap">
+  <div class="page-header">
+    <div class="badge">KR Partner Dashboard</div>
+    <h2>파트너 대시보드 허브</h2>
+    <p>확인할 대시보드를 선택해주세요.</p>
+  </div>
+
+  <div class="card-grid">
+    <!-- Card 1: Master Map -->
+    <a class="nav-card" id="card-mastermap" href="MAP/1.%20Main/2.%20main/hearing_aid_korea/partner_master_map.html">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+      </div>
+      <div class="card-body">
+        <div class="card-tag">Master Map</div>
+        <div class="card-title">파트너 마스터맵</div>
+        <div class="card-desc">지역별 파트너 현황, 주별·월별 KPI, 등급 추이, 신규 파트너 모니터링을 확인합니다.</div>
+      </div>
+      <div class="card-footer">
+        <span class="card-footer-label">지도 · KPI · 등급 · 이상치</span>
+        <div class="card-arrow"><svg viewBox="0 0 14 14"><path d="M3 7h8M7 3l4 4-4 4"/></svg></div>
+      </div>
+    </a>
+
+    <!-- Card 2: Partner Performance Dashboard -->
+    <a class="nav-card" id="card-perf" href="Partner/specific_performance/partner_performance_dashboard.html">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      </div>
+      <div class="card-body">
+        <div class="card-tag">Performance</div>
+        <div class="card-title">파트너 개별 성과 대시보드</div>
+        <div class="card-desc">파트너별 월별·주별 성과 추이, KPI 상세, 지역 내 비교 분석을 확인합니다.</div>
+      </div>
+      <div class="card-footer">
+        <span class="card-footer-label">매출 · CR3 · 등급 · 트렌드</span>
+        <div class="card-arrow"><svg viewBox="0 0 14 14"><path d="M3 7h8M7 3l4 4-4 4"/></svg></div>
+      </div>
+    </a>
+  </div>
+
+  <div class="logout-btn">
+    <button onclick="logout()">로그아웃</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var HASH = 'cfb789f892fdf2a45ab1bc1f046932df431a7708165393e0f13fab2c9267c0eb';
+  var SS_KEY = 'map_auth';
+  var gate = document.getElementById('__gate__');
+  var form = document.getElementById('__gateForm__');
+  var inp  = document.getElementById('__gatePwd__');
+  var err  = document.getElementById('__gateErr__');
+  var btn  = document.getElementById('__gateBtn__');
+  var eyeOff = document.getElementById('eye-off');
+  var eyeOn  = document.getElementById('eye-on');
+
+  function unlock() {
+    gate.classList.add('hidden');
+  }
+
+  // Already authed this session?
+  if (sessionStorage.getItem(SS_KEY) === HASH) { unlock(); }
+
+  async function sha256(s) {
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    btn.disabled = true;
+    err.textContent = '';
+    var h = await sha256(inp.value);
+    if (h === HASH) {
+      sessionStorage.setItem(SS_KEY, HASH);
+      unlock();
+    } else {
+      err.textContent = '비밀번호가 올바르지 않습니다.';
+      inp.classList.add('err');
+      inp.value = '';
+      setTimeout(function(){ inp.classList.remove('err'); }, 400);
+    }
+    btn.disabled = false;
+  });
+
+  document.getElementById('__gateEye__').addEventListener('click', function() {
+    var hidden = inp.type === 'password';
+    inp.type = hidden ? 'text' : 'password';
+    eyeOff.style.display = hidden ? 'none' : '';
+    eyeOn.style.display  = hidden ? '' : 'none';
+  });
+
+  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') form.dispatchEvent(new Event('submit')); });
+
+  window.logout = function() {
+    sessionStorage.removeItem(SS_KEY);
+    gate.classList.remove('hidden');
+    inp.value = ''; err.textContent = '';
+  };
+})();
+</script>
+</body>
+</html>
