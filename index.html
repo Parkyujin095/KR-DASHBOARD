@@ -8,7 +8,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: "Nanum Square", "NanumSquare", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #eef0f4;
   min-height: 100vh;
   display: flex;
@@ -17,154 +17,171 @@ body {
   padding: 24px;
 }
 
-/* ── Lock Gate ── */
-#__gate__ {
+/* ── Gate ── */
+#gate {
   position: fixed; inset: 0;
   background: #eef0f4;
-  z-index: 99999;
+  z-index: 9999;
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
-#__gate__.hidden { display: none; }
+#gate.hidden { display: none; }
+
 .gate-card {
-  background: #fff; border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.10);
   padding: 44px 48px;
   width: min(100%, 420px);
   text-align: center;
 }
-.gate-lock {
-  width: 64px; height: 64px; border-radius: 50%;
+.gate-icon {
+  width: 60px; height: 60px; border-radius: 50%;
   background: #EEF2FF;
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
 }
-.gate-lock svg { width: 28px; height: 28px; stroke: #1B3A6B; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.gate-title { font-size: 22px; font-weight: 800; color: #1a2236; margin: 0 0 6px; }
-.gate-desc { font-size: 14px; color: #9ca3af; margin: 0 0 28px; }
-.gate-label { display: block; font-size: 13px; font-weight: 700; color: #1f2937; text-align: left; margin-bottom: 8px; }
-.gate-input-wrap { position: relative; margin-bottom: 20px; }
+.gate-icon svg { width: 26px; height: 26px; stroke: #1B3A6B; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gate-title { font-size: 21px; font-weight: 800; color: #1a2236; margin-bottom: 6px; }
+.gate-desc  { font-size: 13px; color: #9ca3af; margin-bottom: 28px; }
+.gate-label { display: block; font-size: 12px; font-weight: 700; color: #374151; text-align: left; margin-bottom: 7px; }
+
+.gate-field { position: relative; margin-bottom: 18px; }
 .gate-input {
-  width: 100%; padding: 13px 44px 13px 14px;
+  width: 100%; padding: 13px 46px 13px 14px;
   border: 1.5px solid #e5e7eb; border-radius: 10px;
   font-size: 15px; background: #f9fafb; color: #1f2937;
   font-family: inherit;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color .15s, background .15s;
 }
 .gate-input:focus { outline: none; border-color: #1B3A6B; background: #fff; }
-.gate-input.err { border-color: #dc2626; animation: shake 0.3s; }
-@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-.gate-eye {
+.gate-input.err   { border-color: #dc2626; animation: shake .3s; }
+/* Edge/IE 기본 reveal · clear 버튼 제거 — 커스텀 eye 버튼과 충돌 방지 */
+.gate-input::-ms-reveal { display: none; }
+.gate-input::-ms-clear  { display: none; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+.eye-btn {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   background: none; border: none; cursor: pointer; padding: 4px; color: #9ca3af; line-height: 0;
 }
-.gate-eye svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.gate-submit {
+.eye-btn svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.gate-btn {
   width: 100%; background: #1B3A6B; color: #fff;
   border: none; border-radius: 10px;
-  padding: 14px; font-size: 15px; font-weight: 700;
+  padding: 13px; font-size: 15px; font-weight: 700;
   cursor: pointer; font-family: inherit;
-  transition: background 0.15s, transform 0.08s;
+  transition: background .15s, transform .08s;
 }
-.gate-submit:hover { background: #15306b; }
-.gate-submit:active { transform: scale(0.99); }
-.gate-submit:disabled { background: #9ca3af; cursor: not-allowed; }
-.gate-error { margin-top: 14px; color: #dc2626; font-size: 13px; font-weight: 700; min-height: 20px; }
+.gate-btn:hover    { background: #15306b; }
+.gate-btn:active   { transform: scale(.99); }
+.gate-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+.gate-error { margin-top: 12px; color: #dc2626; font-size: 13px; font-weight: 700; min-height: 18px; }
 
-/* ── Hub Portal ── */
-.portal-wrap {
+/* ── Portal ── */
+.portal {
   background: #f4f5f7;
   border-radius: 16px;
-  width: min(100%, 760px);
+  width: min(100%, 780px);
   padding: 40px 44px 44px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
 }
-.page-header { margin-bottom: 32px; }
-.page-header h2 { font-size: 24px; font-weight: 800; color: #1a2236; margin-bottom: 6px; }
-.page-header p { font-size: 13px; color: #6b7280; }
-.page-header .badge {
+.portal-header { margin-bottom: 32px; }
+.portal-badge {
   display: inline-block; background: #EEF2FF; color: #1B3A6B;
-  border: 0.5px solid #c7d2fe; border-radius: 20px;
+  border: .5px solid #c7d2fe; border-radius: 20px;
   font-size: 11px; font-weight: 700; padding: 3px 12px;
-  margin-bottom: 10px; letter-spacing: 0.04em;
+  margin-bottom: 10px; letter-spacing: .04em;
 }
+.portal-title { font-size: 23px; font-weight: 800; color: #1a2236; margin-bottom: 5px; }
+.portal-sub   { font-size: 13px; color: #6b7280; }
 
-.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
 
 .nav-card {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
-  padding: 28px 26px; cursor: pointer;
-  transition: border-color 0.18s, transform 0.14s, box-shadow 0.18s;
-  display: flex; flex-direction: column; gap: 18px; text-align: left;
+  padding: 26px 24px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 16px;
   text-decoration: none; color: inherit;
+  transition: border-color .18s, transform .14s, box-shadow .18s;
 }
-.nav-card:hover { border-color: #1B3A6B; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(27,58,107,0.12); }
-.nav-card:active { transform: scale(0.99); }
+.nav-card:hover  { border-color: #1B3A6B; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(27,58,107,.12); }
+.nav-card:active { transform: scale(.99); }
 
-.card-icon { width: 44px; height: 44px; background: #EEF2FF; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.card-icon svg { width: 22px; height: 22px; stroke: #1B3A6B; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.card-tag { font-size: 10px; font-weight: 700; color: #6b7280; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
-.card-title { font-size: 16px; font-weight: 800; color: #1a2236; line-height: 1.4; }
-.card-desc { font-size: 12px; color: #9ca3af; margin-top: 5px; line-height: 1.7; }
-.card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid #f3f4f6; }
+.card-icon { width: 42px; height: 42px; background: #EEF2FF; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-icon svg { width: 20px; height: 20px; stroke: #1B3A6B; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.card-tag   { font-size: 10px; font-weight: 700; color: #6b7280; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
+.card-title { font-size: 15px; font-weight: 800; color: #1a2236; line-height: 1.4; }
+.card-desc  { font-size: 12px; color: #9ca3af; margin-top: 4px; line-height: 1.7; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid #f3f4f6; }
 .card-footer-label { font-size: 11px; color: #9ca3af; }
-.card-arrow { width: 30px; height: 30px; background: #1B3A6B; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.card-arrow svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.card-arrow { width: 28px; height: 28px; background: #1B3A6B; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-arrow svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
-.logout-btn {
-  margin-top: 28px; text-align: center;
-}
-.logout-btn button {
+.logout-wrap { margin-top: 26px; text-align: center; }
+.logout-wrap button {
   background: none; border: 1px solid #e5e7eb; border-radius: 8px;
   color: #9ca3af; font-size: 12px; padding: 7px 18px; cursor: pointer;
-  font-family: inherit; transition: color 0.15s, border-color 0.15s;
+  font-family: inherit; transition: color .15s, border-color .15s;
 }
-.logout-btn button:hover { color: #6b7280; border-color: #6b7280; }
+.logout-wrap button:hover { color: #6b7280; border-color: #6b7280; }
 </style>
 </head>
 <body>
 
-<!-- Lock Gate -->
-<div id="__gate__" role="dialog" aria-modal="true">
-  <form class="gate-card" id="__gateForm__" autocomplete="off">
-    <div class="gate-lock">
+<!-- 비밀번호 게이트 -->
+<div id="gate" role="dialog" aria-modal="true" aria-label="로그인">
+  <form class="gate-card" id="gateForm" autocomplete="on" novalidate>
+    <div class="gate-icon">
       <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
     </div>
     <h1 class="gate-title">KR 파트너 대시보드</h1>
     <p class="gate-desc">비밀번호를 입력해주세요.</p>
-    <label class="gate-label" for="__gatePwd__">비밀번호</label>
-    <div class="gate-input-wrap">
-      <input type="password" class="gate-input" id="__gatePwd__"
-             placeholder="비밀번호를 입력하세요" autocomplete="current-password" required/>
-      <button type="button" class="gate-eye" id="__gateEye__" aria-label="비밀번호 표시/숨김">
-        <svg id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M10.73 10.73a3 3 0 0 0 4.24 4.24"/></svg>
-        <svg id="eye-on"  viewBox="0 0 24 24" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+
+    <label class="gate-label" for="gatePwd">비밀번호</label>
+    <div class="gate-field">
+      <input type="password" id="gatePwd" name="password"
+             class="gate-input"
+             placeholder="비밀번호를 입력하세요"
+             autocomplete="current-password"/>
+      <button type="button" class="eye-btn" id="eyeBtn" aria-label="비밀번호 표시/숨김">
+        <svg id="eyeOff" viewBox="0 0 24 24">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+          <path d="M10.73 10.73a3 3 0 0 0 4.24 4.24"/>
+        </svg>
+        <svg id="eyeOn" viewBox="0 0 24 24" style="display:none">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
       </button>
     </div>
-    <button type="submit" class="gate-submit" id="__gateBtn__">확인</button>
-    <div class="gate-error" id="__gateErr__"></div>
+
+    <button type="submit" class="gate-btn" id="gateBtn">확인</button>
+    <div class="gate-error" id="gateErr" role="alert"></div>
   </form>
 </div>
 
-<!-- Hub Portal (shown after auth) -->
-<div class="portal-wrap">
-  <div class="page-header">
-    <div class="badge">KR Partner Dashboard</div>
-    <h2>파트너 대시보드 허브</h2>
-    <p>확인할 대시보드를 선택해주세요.</p>
+<!-- 허브 포털 (인증 후 표시) -->
+<div class="portal">
+  <div class="portal-header">
+    <div class="portal-badge">KR Partner Dashboard</div>
+    <div class="portal-title">파트너 대시보드 허브</div>
+    <div class="portal-sub">확인할 대시보드를 선택해주세요.</div>
   </div>
 
   <div class="card-grid">
-    <!-- Card 1: Master Map -->
-    <a class="nav-card" id="card-mastermap" href="MAP/1.%20Main/2.%20main/hearing_aid_korea/partner_master_map.html">
+    <a class="nav-card" href="MAP/1.%20Main/2.%20main/hearing_aid_korea/partner_master_map.html">
       <div class="card-icon">
         <svg viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
       </div>
-      <div class="card-body">
+      <div>
         <div class="card-tag">Master Map</div>
         <div class="card-title">파트너 마스터맵</div>
-        <div class="card-desc">지역별 파트너 현황, 주별·월별 KPI, 등급 추이, 신규 파트너 모니터링을 확인합니다.</div>
+        <div class="card-desc">지역별 파트너 현황, 주별·월별 KPI, 등급 추이, 신규 파트너 모니터링</div>
       </div>
       <div class="card-footer">
         <span class="card-footer-label">지도 · KPI · 등급 · 이상치</span>
@@ -172,15 +189,14 @@ body {
       </div>
     </a>
 
-    <!-- Card 2: Partner Performance Dashboard -->
-    <a class="nav-card" id="card-perf" href="Partner/specific_performance/partner_performance_dashboard.html">
+    <a class="nav-card" href="Partner/specific_performance/partner_performance_dashboard.html">
       <div class="card-icon">
         <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
       </div>
-      <div class="card-body">
+      <div>
         <div class="card-tag">Performance</div>
         <div class="card-title">파트너 개별 성과 대시보드</div>
-        <div class="card-desc">파트너별 월별·주별 성과 추이, KPI 상세, 지역 내 비교 분석을 확인합니다.</div>
+        <div class="card-desc">파트너별 월별·주별 성과 추이, KPI 상세, 지역 내 비교 분석</div>
       </div>
       <div class="card-footer">
         <span class="card-footer-label">매출 · CR3 · 등급 · 트렌드</span>
@@ -189,65 +205,80 @@ body {
     </a>
   </div>
 
-  <div class="logout-btn">
-    <button onclick="logout()">로그아웃</button>
+  <div class="logout-wrap">
+    <button onclick="doLogout()">로그아웃</button>
   </div>
 </div>
 
 <script>
-(function() {
-  var HASH = 'cfb789f892fdf2a45ab1bc1f046932df431a7708165393e0f13fab2c9267c0eb';
+(function () {
+  var HASH   = 'cfb789f892fdf2a45ab1bc1f046932df431a7708165393e0f13fab2c9267c0eb';
   var SS_KEY = 'map_auth';
-  var gate = document.getElementById('__gate__');
-  var form = document.getElementById('__gateForm__');
-  var inp  = document.getElementById('__gatePwd__');
-  var err  = document.getElementById('__gateErr__');
-  var btn  = document.getElementById('__gateBtn__');
-  var eyeOff = document.getElementById('eye-off');
-  var eyeOn  = document.getElementById('eye-on');
 
-  function unlock() {
-    gate.classList.add('hidden');
+  // Edge Tracking Prevention 대응: sessionStorage 접근 실패 시 메모리 fallback
+  var _mem = false;
+  function ssGet(k)    { try { return sessionStorage.getItem(k); }    catch (e) { return _mem ? HASH : null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, v); }        catch (e) { if (k === SS_KEY) _mem = (v === HASH); } }
+  function ssDel(k)    { try { sessionStorage.removeItem(k); }        catch (e) { if (k === SS_KEY) _mem = false; } }
+
+  var gate    = document.getElementById('gate');
+  var form    = document.getElementById('gateForm');
+  var inp     = document.getElementById('gatePwd');
+  var btn     = document.getElementById('gateBtn');
+  var errEl   = document.getElementById('gateErr');
+  var eyeBtn  = document.getElementById('eyeBtn');
+  var eyeOff  = document.getElementById('eyeOff');
+  var eyeOn   = document.getElementById('eyeOn');
+
+  function unlock() { gate.classList.add('hidden'); }
+  function showErr(msg) { errEl.textContent = msg; }
+
+  // 이미 인증된 세션이면 즉시 잠금 해제
+  if (ssGet(SS_KEY) === HASH) { unlock(); }
+
+  // SHA-256 해시
+  async function sha256(str) {
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
   }
 
-  // Already authed this session?
-  if (sessionStorage.getItem(SS_KEY) === HASH) { unlock(); }
-
-  async function sha256(s) {
-    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-  }
-
-  form.addEventListener('submit', async function(e) {
+  // 폼 제출
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
     btn.disabled = true;
-    err.textContent = '';
+    showErr('');
     var h = await sha256(inp.value);
     if (h === HASH) {
-      sessionStorage.setItem(SS_KEY, HASH);
+      ssSet(SS_KEY, HASH);
       unlock();
     } else {
-      err.textContent = '비밀번호가 올바르지 않습니다.';
+      showErr('비밀번호가 올바르지 않습니다.');
       inp.classList.add('err');
       inp.value = '';
-      setTimeout(function(){ inp.classList.remove('err'); }, 400);
+      setTimeout(function () { inp.classList.remove('err'); inp.focus(); }, 400);
     }
     btn.disabled = false;
   });
 
-  document.getElementById('__gateEye__').addEventListener('click', function() {
-    var hidden = inp.type === 'password';
-    inp.type = hidden ? 'text' : 'password';
-    eyeOff.style.display = hidden ? 'none' : '';
-    eyeOn.style.display  = hidden ? '' : 'none';
+  // 눈 아이콘 토글
+  eyeBtn.addEventListener('click', function () {
+    var show = inp.type === 'password';
+    inp.type         = show ? 'text' : 'password';
+    eyeOff.style.display = show ? 'none' : '';
+    eyeOn.style.display  = show ? ''     : 'none';
+    inp.focus();
   });
 
-  inp.addEventListener('keydown', function(e){ if(e.key==='Enter') form.dispatchEvent(new Event('submit')); });
-
-  window.logout = function() {
-    sessionStorage.removeItem(SS_KEY);
+  // 로그아웃
+  window.doLogout = function () {
+    ssDel(SS_KEY);
     gate.classList.remove('hidden');
-    inp.value = ''; err.textContent = '';
+    inp.value = '';
+    inp.type = 'password';
+    eyeOff.style.display = '';
+    eyeOn.style.display  = 'none';
+    showErr('');
+    inp.focus();
   };
 })();
 </script>
