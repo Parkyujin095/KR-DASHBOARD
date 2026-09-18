@@ -367,6 +367,11 @@
     background: var(--surface-2);
   }
 
+  /* 2026-09-18: 테이블 헤더 세로 고정 재시도했다가 다시 철회 — thead/th에 position:sticky를 걸었더니
+     헤더행과 첫 데이터행의 위치가 뒤바뀌어 보이는 렌더링 오류 발생(스크린샷으로 확인). 이 환경에서는
+     .table-scroll(overflow-x:auto) 안의 sticky 헤더 자체가 신뢰할 수 없는 것으로 판단 — 항목열 가로 고정만
+     유지하고 세로 고정은 보류. */
+
   table.std thead th.sortable-th {
     cursor: pointer;
     user-select: none;
@@ -390,6 +395,33 @@
     overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 10px;
+  }
+
+  /* 헤더 세로 고정 — JS 클론 방식(2026-09-18, CSS position:sticky가 이 환경에서 깨져서 재시도). 실제 DOM은
+     건드리지 않는 순수 오버레이라 문제 생기면 initStickyHeaders() 호출 한 줄만 지우면 완전히 원상복구됨.
+     overflow-x는 hidden이 아니라 auto로 둠(스크롤바는 아래에서 숨김) — overflow:hidden 요소는 JS로 scrollLeft를
+     줘도 브라우저에 따라 실제로 안 밀리는 경우가 있어서(마진표처럼 기간이 많아 가로 스크롤이 실제로 필요한
+     표에서 헤더가 안 따라오고 멈춰있던 원인) auto(진짜 스크롤 컨테이너)로 바꿔 확실하게 동작하도록 함. */
+  .sticky-thead-clone {
+    position: fixed;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox: 스크롤바 숨김(기능은 유지) */
+    z-index: 15;
+    background: var(--surface);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+    border: 1px solid var(--border);
+    border-top: none;
+    display: none;
+  }
+
+  .sticky-thead-clone::-webkit-scrollbar {
+    display: none; /* Chrome/Safari: 스크롤바 숨김(기능은 유지) */
+  }
+
+  .sticky-thead-clone table {
+    border-collapse: collapse;
+    font-size: 12.5px;
   }
 
   tr.bucket-bad td {
@@ -839,26 +871,8 @@
   </div>
   <div class="toolbar-right">
     <span class="snapshot-badge"><span class="dot"></span> 데이터 기준: 2026-09-07 스냅샷</span>
-    <div class="seg">
-      <button id="btnWeekly" onclick="setGranularity('weekly')">주별</button>
-      <button id="btnMonthly" class="active" onclick="setGranularity('monthly')">월별</button>
-      <button id="btnYearly" onclick="setGranularity('yearly')">연도별</button>
-    </div>
-    <select id="periodPreset" onchange="onPeriodPresetChange()">
-      <option value="l30">L30D (최근 30일)</option>
-      <option value="l60">L60D (최근 60일)</option>
-      <option value="l90" selected>L90D (최근 90일)</option>
-      <option value="6m">최근 6개월</option>
-      <option value="12m">최근 1년</option>
-      <option value="custom">특정 기간…</option>
-    </select>
-    <select id="yearSelect" onchange="onYearSelectChange()" style="display:none;">
-      <option value="all">전체 연도(2023~2026)</option>
-    </select>
   </div>
 </header>
-<div style="padding:6px 24px 0; font-size:11.5px; color:var(--ink-3);">▸ 위 기간 필터는 ①②③ 카드 전체에 함께 적용됩니다 (④ 교육 모니터링은 파트너별
-  교육시작일 기준 자체 전/후 비교라 이 필터와 무관).</div>
 
 <div class="wrap">
   <div class="main-col">
@@ -1055,18 +1069,48 @@
     </div>
     <div class="side-body active" id="tabFilter">
       <div class="field">
-        <label>적용 중인 기간 (프리셋 선택 시에도 실제 일자가 여기 표시됩니다 — 직접 수정하면 "특정 기간…"으로 전환)</label>
+        <label>기간 설정</label>
+        <div class="seg" style="width:100%; margin-bottom:8px;">
+          <button id="btnWeekly" style="flex:1;" onclick="setGranularity('weekly')">week</button>
+          <button id="btnMonthly" class="active" style="flex:1;" onclick="setGranularity('monthly')">month</button>
+          <button id="btnYearly" style="flex:1;" onclick="setGranularity('yearly')">year</button>
+        </div>
+        <select id="periodPreset" style="width:100%; margin-bottom:8px;" onchange="onPeriodPresetChange()">
+          <option value="l30">L30D (최근 30일)</option>
+          <option value="l60">L60D (최근 60일)</option>
+          <option value="l90" selected>L90D (최근 90일)</option>
+          <option value="6m">최근 6개월</option>
+          <option value="12m">최근 1년</option>
+          <option value="custom">특정 기간…</option>
+        </select>
+        <select id="yearSelect" style="width:100%; margin-bottom:8px; display:none;" onchange="onYearSelectChange()">
+          <option value="all">전체 연도(2023~2026)</option>
+        </select>
         <input type="date" id="customStartInput" style="width:100%; margin-bottom:6px;" value="2026-06-01"
           onchange="onCustomDateChange()">
         <input type="date" id="customEndInput" style="width:100%;" value="2026-08-31" onchange="onCustomDateChange()">
       </div>
-      <div class="side-note">ⓘ 주별 데이터는 runrate_data.json에 보관된 최근 12주(2026-06-22~)만 존재합니다 — "최근6개월"/"최근1년"을 주별로 보면 그
-        12주까지만 표시됩니다. 더 긴 이력은 월별 모드로 확인하세요.</div>
       <div class="field">
         <label>주별 표기 방식 (주별 모드에서만 적용)</label>
         <div class="seg" id="weekLabelToggle">
           <button data-wl="weeknum" class="active" onclick="setWeekLabelMode('weeknum')">주차</button>
           <button data-wl="date" onclick="setWeekLabelMode('date')">날짜</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Profit% 설정 (선택 기간 기준) — ① 카드에 적용</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="number" id="profitMinInput" placeholder="최소" style="width:50%;" onchange="onMetricFilterChange()">
+          <span style="color:var(--ink-3);">~</span>
+          <input type="number" id="profitMaxInput" placeholder="최대" style="width:50%;" onchange="onMetricFilterChange()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Visits 설정 (선택 기간 합산 기준) — ① 카드에 적용</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="number" id="visitsMinInput" placeholder="최소" style="width:50%;" onchange="onMetricFilterChange()">
+          <span style="color:var(--ink-3);">~</span>
+          <input type="number" id="visitsMaxInput" placeholder="최대" style="width:50%;" onchange="onMetricFilterChange()">
         </div>
       </div>
       <div class="field">
@@ -1081,17 +1125,7 @@
           <option value="all">전체</option>
         </select>
       </div>
-      <div class="field">
-        <label>상태 필터 — ①·④ 카드에 적용</label>
-        <select id="statusFilterSel" style="width:100%;" onchange="onSidebarFilterChange()">
-          <option value="all">전체</option>
-          <option value="관찰중">관찰중</option>
-          <option value="교육중">교육중</option>
-          <option value="재협약검토">재협약검토</option>
-          <option value="종료">종료</option>
-        </select>
-      </div>
-      <div class="side-note">필터를 선택하면 ①의 구간 분포가 해당 그룹으로만 재계산되고, 아래 파트너 목록이 바로 펼쳐집니다. ④ 교육 모니터링 표도 동일하게 필터링됩니다.</div>
+      <div class="side-note">필터를 선택하면 ①의 구간 분포가 해당 그룹으로만 재계산되고, 아래 파트너 목록이 바로 펼쳐집니다. Profit%/방문수 필터는 선택 기간 기준으로 계산된 값에 적용되며, ④ 교육 모니터링 표는 지역/등급만 동일하게 필터링됩니다(Profit%/방문수 필터는 적용되지 않음 — 교육 전/후 비교라는 별도 기준을 쓰기 때문).</div>
     </div>
     <div class="side-body" id="tabDef">
       <h4>핵심 지표 · 태그 · 우선순위 · 상태 정의</h4>
@@ -1131,7 +1165,7 @@
      ============================================================ */
   const SECTION_DESC = {
     bucket: `기간 필터 선택 기간 동안의 수익률(매출 대비 Profit %) 구간별 파트너 분포를 보여주는 전체 현황. <br>
-    <b>상단 기간 필터가 고른 기간 중 진행중(미완결)인 달/주는 제외</b>하고 완결된 기간만 반영합니다(검토 필요
+    <b>사이드바 기간 필터가 고른 기간 중 진행중(미완결)인 달/주는 제외</b>하고 완결된 기간만 반영합니다(검토 필요
     파트너 표와 동일한 원칙 — 진행중 기간은 수치가 아직 확정 안 돼 구간 분류가 왜곡될 수 있어서. 고른 기간 전체가
     진행중뿐이면 예외적으로 원래 기간 그대로 사용).<br>
     구간은 기간 내 수익률 기준으로 적자 (-), 0~10%, 10~20%, 20~ + 로 구분됩니다.<br>
@@ -1140,7 +1174,7 @@
     위험: 해당 기간 합산 적자<br>
     모니터링: 기간 합산은 흑자인데 그 안 개별 주·월 중 적자가 섞여있는 경우<br>
     안정적: 계속 흑자<br>
-    Visits_open(진행중 파이프라인) 열은 <b>상단 기간 필터와 무관하게 "지금 이 순간" 총 진행중 고객수</b>입니다
+    Visits_open(진행중 파이프라인) 열은 <b>사이드바 기간 필터와 무관하게 "지금 이 순간" 총 진행중 고객수</b>입니다
     — 기간 필터를 넓힌다고 커지지 않습니다(적자 파트너의 흑자 전환 가능성 참고용).`,
     review: `기간 필터와 무관하게, 아래 <b>조회 기간 토글(3개월/6개월)</b>로 조정되는 테이블입니다.
     <b>완결된 월(진행중 월 제외)</b> 기준 그 기간을 합산한 <b>누적 수익률</b>(매출 합계 대비 Profit
@@ -1153,7 +1187,7 @@
     <b>신규</b>: 계약 183일 이내
     <b>고볼륨</b>: 월평균 방문수 20명 이상
     <b>유일</b>: 지역(중)에 파트너가 유일센터인 경우
-    * 사이드바 지역/등급/상태 필터는 이 표에도 적용됩니다.`,
+    * 사이드바 지역/등급 필터(및 Profit%/방문수 필터)는 이 표에도 적용됩니다.`,
     region: `지역(중) 기준으로 지역별 수익률을 확인 가능한 테이블입니다.
     평균과 중앙값을 같이 보면 "지역 전체가 안 좋은지 vs 특정 파트너 몇개가 끌어내리는지" 구분에 도움이 됩니다.
     * 평균 ≈ 중앙값이면 지역 전반 문제
@@ -1174,10 +1208,14 @@
     완결월수/방문수(평균)/방문수(합)/판매수(합)은 등급 우측에 있으며, 하락 시작 시점~최근 완결월 구간(=연속
     하락 개월수+1개월)의 볼륨입니다. <b>완결월수는 파트너마다 하락 개월수가 달라 서로 다릅니다</b> —
     방문수(평균)이 몇 개월로 나눈 값인지 바로 옆에서 확인할 수 있습니다.<br>
-    * 사이드바 지역/등급/상태 필터가 이 표에도 적용됩니다.`,
+    * 사이드바 지역/등급 필터가 이 표에도 적용됩니다(Profit%/방문수 필터는 이 표엔 적용 안 됨 — 이미 자체
+    하락 추세 로직이 있어서).<br>`,
     margin: `Leads~Sales 까지의 퍼널과 함께 Revenue~Profit 까지 이어지는 마진을 보여주는 테이블입니다. <br>
     퍼널 순서: Leads → Appts → Appts_open → VR → Visits → Visits_open → OR → Orders → SR → Sales → Bin rate → ABV.<br>
-    <b>상단 "연도별" 버튼 = 2023~2026 장기 추세 전용 뷰</b>(2026-09-17 추가). 상단 기간 필터와 무관하게 항상
+    맨 오른쪽 <b>합계</b> 열은 선택된 기간 중 <b>진행중(미완결) 기간을 제외</b>하고 계산됩니다. Leads/Appts/
+    Orders/Sales/Appts_open/Visits_open과 모든 금액(Revenue~Profit)은 <b>합산</b>, VR/OR/SR/Bin rate/ABV는
+    표시된 기간별 값들의 <b>단순 평균</b>입니다(다른 비율 지표처럼 합산 후 재계산이 아님 — 합계 열 전용 규칙).<br>
+    <b>사이드바 "연도별" 버튼 = 2023~2026 장기 추세 전용 뷰</b>(2026-09-17 추가). 사이드바 기간 필터와 무관하게 항상
     전체 연도가 표시됩니다. 2023~2025는 이 대시보드가 쓰는 runrate_data.json과 별도로, 아카이브 원본 raw
     CSV(dbt_test/dbt_dataset/dbt_dataset_2023~2025.csv)에서 <b>독립적으로 새로 계산</b>했고(주별/월별 데이터와는
     다른 스크립트), 아래 2가지 근사가 있습니다 — 장기 추세 파악용으로는 충분하지만 정확한 개별월 수치와는
@@ -1205,12 +1243,12 @@
     두 행 다 %매출 칸은 의미 없어 "-"로 표시되고, 연도별(yearly) 뷰에는 이 데이터가 없어 "—"로 나옵니다.
     적자 파트너의 "탈출 가능성"(진행중인 파이프라인이 얼마나 있는지)을 참고하는 용도입니다.<br>
     마진 테이블 하단에 전체 평균 대비, 동일 지역(중), 지역(소) 대비 파트너의 수익률의 위치를 보여줍니다.
-    * 상단 기간 필터에 따라 테이블 값이 변동됩니다(위 진행중 배지 제외).
+    * 사이드바 기간 필터에 따라 테이블 값이 변동됩니다(위 진행중 배지 제외).
     <span class="partial-tag">*</span> 표시된 기간은 아직 안 끝난(진행중) 기간이라 수치가 왜곡될 수 있습니다.`,
     trend: `② 파트너별 마진 에서 검색/선택한 파트너와 연동됩니다.<br>
     Revenue·Profit은 막대 그래프, 수익률(매출 대비 Profit%)은 선그래프로 표시 <br>
     <span class="partial-tag">*</span> = 진행중·미완결 기간.
-    * 판별 배지는 단순 최근월 적자 여부가 아니라 <b>완결된 월 기준</b> 최근 12개월 이력 대비 "지속 악화"인지 "일시적 하락"인지 자동 판별하여 표기됩니다. (항상 12개월 기준 — 상단 기간 필터와 무관, 진행중인 이번 달은 제외).`,
+    * 판별 배지는 단순 최근월 적자 여부가 아니라 <b>완결된 월 기준</b> 최근 12개월 이력 대비 "지속 악화"인지 "일시적 하락"인지 자동 판별하여 표기됩니다. (항상 12개월 기준 — 사이드바 기간 필터와 무관, 진행중인 이번 달은 제외).`,
     edu: `트레이닝이 진행되고있는, 진행된 파트너의 교육 전(최대 3개월 평균)/후 성과 비교 모니터링 테이블입니다.<br>
     현재는 연동된 데이터가 없고, 추후 트레이닝 시작 시 구글시트로 파트너 관리 및 대시보드와 연동할 예정입니다. <span class="todo-tag">TBD</span><br>
     연동되면 자동판정 컬럼이 <b>교육후 평균 수익률 − 교육전 평균 수익률(delta, %p)</b> 값에 따라 아래 기준으로 자동 채워집니다.<br>
@@ -1218,7 +1256,8 @@
     <b>개선됨</b>: delta ≥ +3%p<br>
     <b>미개선</b>: delta ≤ -1%p<br>
     <b>보합</b>: 위 두 경우 사이(-1%p 초과 ~ +3%p 미만)<br>
-    * 우측 사이드바의 지역/등급/상태 필터가 이 표에도 적용됩니다.`,
+    * 우측 사이드바의 지역/등급 필터가 이 표에도 적용됩니다(Profit%/방문수 필터는 적용 안 됨 — 교육 전/후
+    비교라는 별도 기준을 씀).<br>`,
     kpiDefs: `<b>핵심 지표</b><br>
     VR = 방문/예약수(visits/appts×100), OR = 주문/방문(orders/visits×100), SR = 성공/주문마감건수(closed_orders) — kpi_logic.md §26-1 확정 정의,
     PSR = OR×SR/100, CR3 = VR×OR×SR/10000, Bin rate(양이율) = 성공대수/성공명수(1.0~2.0, %아님), ABV = 매출/성공수.<br><br>
@@ -1226,7 +1265,7 @@
     Contribution Margin = Gross Margin − 변동비(인센티브+결제수수료+물류비+마케팅비+Royalty).<br>
     Gross Margin = Revenue − COGS(공급원가+반품비용+피팅비).<br>
     마케팅비 = 방문수 × 31,000원(예약수/리드 기준 아님 — 파트너가 직접 통제하기 어려운 지표 대신 방문 성사를 기준으로 함).<br><br>
-    <b>상태(선택 기간 기준, 드릴다운·지역팝업 표시)</b> — 상단 기간 필터로 고른 구간 동안의 수익률로 매번 다시 계산:
+    <b>상태(선택 기간 기준, 드릴다운·지역팝업 표시)</b> — 사이드바 기간 필터로 고른 구간 동안의 수익률로 매번 다시 계산:
     <b>위험</b>=그 기간 전체 합산 profit%가 적자 · <b>모니터링</b>=합산은 흑자지만 기간 내 개별 소기간(주/월)
     중 적자가 섞여있음(추세 변동) · <b>안정적</b>=계속 흑자. ※ 이건 사이드바 "상태 필터"·④교육 모니터링표가 쓰는
     <b>파트너 케이스관리 상태</b>(관찰중/교육중/재협약검토/종료 — 아직 실데이터 미연동, 전부 "관찰중" 기본값)와는
@@ -1372,7 +1411,10 @@
   let weekLabelMode = "weeknum"; // "weeknum" | "date" — 주별 모드 표기 방식(runrate와 동일 컨벤션)
   let selectedPartner = null; // null = 전체(합산)
   let selectedBucketKey = null;
-  let filters = { region: "all", grade: "all", status: "all" };
+  // 2026-09-18: 상태 필터 제거, Profit%/방문수 범위 필터 추가(선택 기간 기준 — 파트너 고정 속성이 아니라
+  // 그때그때 계산되는 값이라 matchesFilters(정적 속성용)가 아니라 agg를 넘겨받는 matchesMetricFilters로 별도
+  // 처리 — renderSec1()에서 agg 계산 이후 단계에 적용됨).
+  let filters = { region: "all", grade: "all", profitMin: null, profitMax: null, visitsMin: null, visitsMax: null };
 
   function fmt(n) { return n == null ? "—" : Math.round(n).toLocaleString(); }
   function fmtPct(n) { return n == null ? "—" : n.toFixed(1) + "%"; }
@@ -1380,8 +1422,19 @@
   function matchesFilters(p) {
     if (filters.region !== "all" && p.region_mid !== filters.region) return false;
     if (filters.grade !== "all" && p.grade !== filters.grade) return false;
-    if (filters.status !== "all" && p.status !== filters.status) return false;
     return true;
+  }
+  // Profit%/방문수는 선택 기간에 따라 달라지는 값이라 agg가 계산된 뒤에만 판정 가능 — matchesFilters와
+  // 별개로 renderSec1()에서 perPartner 계산 후 적용.
+  function matchesMetricFilters(agg) {
+    if (filters.profitMin != null && (agg.profit_pct == null || agg.profit_pct < filters.profitMin)) return false;
+    if (filters.profitMax != null && (agg.profit_pct == null || agg.profit_pct > filters.profitMax)) return false;
+    if (filters.visitsMin != null && (agg.visits == null || agg.visits < filters.visitsMin)) return false;
+    if (filters.visitsMax != null && (agg.visits == null || agg.visits > filters.visitsMax)) return false;
+    return true;
+  }
+  function anyMetricFilterActive() {
+    return filters.profitMin != null || filters.profitMax != null || filters.visitsMin != null || filters.visitsMax != null;
   }
 
   // ISO-8601 기준 주차 번호(그 주의 목요일이 속한 연도 기준) — runrate 대시보드와 동일 로직
@@ -1437,7 +1490,7 @@
     document.getElementById("customEndInput").value = end.toISOString().slice(0, 10);
   }
   function getActivePeriodLabels() {
-    // 연도별 뷰는 상단 기간 필터(L30D 등) 대신 연도 선택 드롭다운(selectedYear)을 씀 — "전체"(기본값)면
+    // 연도별 뷰는 사이드바 기간 필터(L30D 등) 대신 연도 선택 드롭다운(selectedYear)을 씀 — "전체"(기본값)면
     // 보유한 전체 연도, 특정 연도 선택 시 그 해 하나만(2026-09-17 사용자 확인: ①②③에는 적용, 검토 필요
     // 파트너/성과 하락 모니터링은 이 값 자체를 참조하지 않아 구조적으로 영향 없음)
     if (granularity === "yearly") {
@@ -1554,26 +1607,26 @@
     { key: "label", label: "구간 (Profit%)", get: r => r.b.min }, // 문자열(label) 대신 구간 하한값(min)으로 정렬 — "적자"(-Infinity)가 "10%~20%" 같은 숫자-시작 문자열보다 사전식으로 뒤로 밀리는 문제 방지, 항상 적자→0~10→10~20→20+ 순서 유지
     { key: "count", label: "파트너 수", get: r => r.members.length },
     { key: "share", label: "비중(파트너수)", get: r => r.share },
-    { key: "appts", label: "합산 예약수 (OCD)", get: r => r.sums.appts },
-    { key: "visits", label: "합산 방문수 (VD)", get: r => r.sums.visits },
-    { key: "visitsShare", label: "비중(방문수)", get: r => r.visitsShare },
-    { key: "sales", label: "합산 판매수 (QID)", get: r => r.sums.sales },
-    { key: "psr", label: "PSR (평균)", get: r => r.avgPSR },
-    { key: "cr3", label: "CR3 (평균)", get: r => r.avgCR3 },
-    { key: "revenue", label: "합산 매출", get: r => r.sums.revenue },
-    { key: "profit", label: "합산 Profit", get: r => r.sums.profit },
-    { key: "avgPct", label: "평균 Profit%", get: r => r.avgPct },
+    { key: "appts", label: "sum Appts (OCD)", get: r => r.sums.appts },
+    { key: "visits", label: "sum Visits (VD)", get: r => r.sums.visits },
+    { key: "visitsShare", label: "비중(Visits)", get: r => r.visitsShare },
+    { key: "sales", label: "sum Sales (QID)", get: r => r.sums.sales },
+    { key: "psr", label: "PSR (avg)", get: r => r.avgPSR },
+    { key: "cr3", label: "CR3 (avg)", get: r => r.avgCR3 },
+    { key: "revenue", label: "sum Revenue", get: r => r.sums.revenue },
+    { key: "profit", label: "sum Profit", get: r => r.sums.profit },
+    { key: "avgPct", label: "avg Profit%", get: r => r.avgPct },
   ];
   const REGION_COLS = [
     { key: "region", label: "지역(중)", get: r => r.region },
     { key: "count", label: "파트너 수", get: r => r.count },
     { key: "lossShare", label: "적자 파트너 비율", get: r => r.lossShare },
-    { key: "appts", label: "합산 예약수", get: r => r.appts },
-    { key: "sales", label: "합산 판매수", get: r => r.sales },
-    { key: "psr", label: "PSR (평균)", get: r => r.avgPSR },
-    { key: "cr3", label: "CR3 (평균)", get: r => r.avgCR3 },
-    { key: "revenue", label: "합산 매출", get: r => r.revenue },
-    { key: "avgPct", label: "평균 Profit%", get: r => r.avgPct },
+    { key: "appts", label: "sum Appts", get: r => r.appts },
+    { key: "sales", label: "sum Sales", get: r => r.sales },
+    { key: "psr", label: "PSR (avg)", get: r => r.avgPSR },
+    { key: "cr3", label: "CR3 (avg)", get: r => r.avgCR3 },
+    { key: "revenue", label: "sum Revenue", get: r => r.revenue },
+    { key: "avgPct", label: "avg Profit%", get: r => r.avgPct },
     { key: "medPct", label: "중앙값 Profit%", get: r => r.medPct },
   ];
   const DECLINE_COLS = [
@@ -1582,9 +1635,9 @@
     { key: "region_mid", label: "지역(중)", get: x => x.p.region_mid },
     { key: "grade", label: "등급", get: x => x.p.grade },
     { key: "monthCount", label: "완결월수", get: x => x.d.monthCount },
-    { key: "avgVisits", label: "방문수(평균)", get: x => x.d.avgVisits },
-    { key: "visitsSum", label: "방문수(합)", get: x => x.d.visitsSum },
-    { key: "salesSum", label: "판매수(합)", get: x => x.d.salesSum },
+    { key: "avgVisits", label: "Visits(avg)", get: x => x.d.avgVisits },
+    { key: "visitsSum", label: "Visits(sum)", get: x => x.d.visitsSum },
+    { key: "salesSum", label: "Sales(sum)", get: x => x.d.salesSum },
     { key: "streak", label: "연속 하락 개월", get: x => x.d.streak },
     { key: "startPct", label: "하락 시작 시점 Profit%", get: x => x.d.startPct },
     { key: "lastPct", label: "최근 완결월 Profit%", get: x => x.d.lastPct },
@@ -1595,9 +1648,9 @@
     { key: "contract_date", label: "계약일자", get: x => x.p.contract_date },
     { key: "region_mid", label: "지역(중)", get: x => x.p.region_mid },
     { key: "grade", label: "등급", get: x => x.p.grade },
-    { key: "avgVisits", label: "방문수(평균)", get: x => x.avgVisits },
-    { key: "visitsSum", label: "방문수(합)", get: x => x.visitsSum },
-    { key: "sales3", label: "판매수(합)", get: x => x.sales3 },
+    { key: "avgVisits", label: "Visits(avg)", get: x => x.avgVisits },
+    { key: "visitsSum", label: "Visits(sum)", get: x => x.visitsSum },
+    { key: "sales3", label: "Sales(sum)", get: x => x.sales3 },
     { key: "psr_3", label: "PSR", get: x => x.psr_3 },
     { key: "cr3_3", label: "CR3", get: x => x.cr3_3 },
     { key: "cumPct", label: "누적 수익률", get: x => x.cumPct },
@@ -1611,10 +1664,13 @@
     { key: "region_mid", label: "지역(중)", get: x => x.p.region_mid },
     { key: "region_sub", label: "지역(소)", get: x => x.p.region_sub },
     { key: "grade", label: "등급", get: x => x.p.grade },
-    { key: "appts", label: "예약수", get: x => x.agg.appts },
-    { key: "visits", label: "방문수", get: x => x.agg.visits },
+    { key: "appts", label: "Appts", get: x => x.agg.appts },
+    { key: "visits", label: "Visits", get: x => x.agg.visits },
+    { key: "orders", label: "Orders", get: x => x.agg.orders },
+    { key: "sales", label: "Sales", get: x => x.agg.sales },
+    { key: "psr", label: "PSR", get: x => x.psr },
+    { key: "cr3", label: "CR3", get: x => x.cr3 },
     { key: "visits_open", label: "Visits_open", get: x => x.visits_open },
-    { key: "sales", label: "판매수", get: x => x.agg.sales },
     { key: "revenue", label: "매출", get: x => x.agg.revenue },
     { key: "profit", label: "Profit", get: x => x.agg.profit },
     { key: "profit_pct", label: "Profit%", get: x => x.agg.profit_pct },
@@ -1625,8 +1681,8 @@
     { key: "contract_date", label: "계약일자", get: x => x.p.contract_date },
     { key: "region_sub", label: "지역(소)", get: x => x.p.region_sub },
     { key: "grade", label: "등급", get: x => x.p.grade },
-    { key: "appts", label: "예약수", get: x => x.agg.appts },
-    { key: "sales", label: "판매수", get: x => x.agg.sales },
+    { key: "appts", label: "Appts", get: x => x.agg.appts },
+    { key: "sales", label: "Sales", get: x => x.agg.sales },
     { key: "psr", label: "PSR", get: x => x.psr },
     { key: "cr3", label: "CR3", get: x => x.cr3 },
     { key: "revenue", label: "매출", get: x => x.agg.revenue },
@@ -1659,7 +1715,7 @@
     const completeOnly = rawLabels.filter(lbl => !isPartialPeriod(granularity, lbl));
     const labels = completeOnly.length ? completeOnly : rawLabels;
     const pool = PARTNERS.filter(matchesFilters).filter(p => isEligibleForPeriod(p, labels));
-    const perPartner = pool.map(p => {
+    let perPartner = pool.map(p => {
       const agg = combinedOverLabels([p], labels);
       return {
         p, agg, bucket: bucketOf(agg.profit_pct), psr: computePSR(agg), cr3: computeCR3(agg),
@@ -1667,6 +1723,8 @@
         visits_open: currentOpenTotalForPartner(p, "visits_open"),
       };
     });
+    // Profit%/방문수 필터 — agg가 계산된 뒤에만 판정 가능해서 matchesFilters(정적 속성)와 별개로 여기서 적용
+    perPartner = perPartner.filter(x => matchesMetricFilters(x.agg));
     lastPerPartner = perPartner;
     const totalSums = combine(perPartner.map(x => x.agg));
     let rows = BUCKETS.map(b => {
@@ -1675,7 +1733,7 @@
       const avgPct = members.length ? members.reduce((s, x) => s + (x.agg.profit_pct || 0), 0) / members.length : null;
       const avgPSR = meanNonNull(members.map(x => x.psr));
       const avgCR3 = meanNonNull(members.map(x => x.cr3));
-      const share = pool.length ? members.length / pool.length * 100 : 0;
+      const share = perPartner.length ? members.length / perPartner.length * 100 : 0;
       const visitsShare = totalSums.visits ? sums.visits / totalSums.visits * 100 : 0;
       return { b, members, sums, avgPct, avgPSR, avgCR3, share, visitsShare };
     });
@@ -1700,7 +1758,7 @@
       <td class="${pctClass(r.avgPct)}">${fmtPct(r.avgPct)}</td>
     </tr>`).join("") + `
     <tr class="static" style="font-weight:700; border-top:2px solid var(--ink-3);">
-      <td>합계</td>
+      <td>Total</td>
       <td>${perPartner.length}</td>
       <td>100%</td>
       <td>${fmt(totalSums.appts)}</td>
@@ -1713,9 +1771,9 @@
       <td class="${pctClass(totalSums.profit)}">${fmt(totalSums.profit)}</td>
       <td class="${pctClass(totalAvgPct)}">${fmtPct(totalAvgPct)}</td>
     </tr>`;
-    const filterActive = filters.region !== "all" || filters.grade !== "all" || filters.status !== "all";
+    const filterActive = filters.region !== "all" || filters.grade !== "all" || anyMetricFilterActive();
     document.getElementById("totalPartnerBadge").textContent =
-      filterActive ? `필터 적용 ${pool.length}개 (전체 ${PARTNERS.length}개)` : `활성 파트너 ${pool.length}개`;
+      filterActive ? `필터 적용 ${perPartner.length}개 (전체 ${PARTNERS.length}개)` : `활성 파트너 ${perPartner.length}개`;
     renderDrillList(perPartner);
     renderReviewTable();
     renderDeclineWatchTable();
@@ -1728,7 +1786,7 @@
   }
 
   function renderDrillList(perPartner) {
-    const filterActive = filters.region !== "all" || filters.grade !== "all" || filters.status !== "all";
+    const filterActive = filters.region !== "all" || filters.grade !== "all" || anyMetricFilterActive();
     const panel = document.getElementById("bucketDrill");
     if (!filterActive && !selectedBucketKey) { panel.style.display = "none"; return; }
     panel.style.display = "block";
@@ -1740,7 +1798,8 @@
     if (selectedBucketKey) { const b = BUCKETS.find(x => x.key === selectedBucketKey); titleParts.push(`<span class="badge ${b.cls}">${b.label}</span>`); }
     if (filters.region !== "all") titleParts.push(`<span class="badge neutral">${filters.region}</span>`);
     if (filters.grade !== "all") titleParts.push(`<span class="badge neutral">등급 ${filters.grade}</span>`);
-    if (filters.status !== "all") titleParts.push(`<span class="badge neutral">${filters.status}</span>`);
+    if (filters.profitMin != null || filters.profitMax != null) titleParts.push(`<span class="badge neutral">Profit% ${filters.profitMin ?? ""}~${filters.profitMax ?? ""}</span>`);
+    if (filters.visitsMin != null || filters.visitsMax != null) titleParts.push(`<span class="badge neutral">방문수 ${filters.visitsMin ?? ""}~${filters.visitsMax ?? ""}</span>`);
     document.getElementById("bucketDrillTitle").innerHTML = titleParts.join(" ") || "전체";
     document.getElementById("bucketDrillTbody").innerHTML = list.length ? list.map(x => `
     <tr onclick="goToPartner('${x.p.name}')">
@@ -1748,7 +1807,8 @@
       <td>${x.tags.length ? x.tags.map(t => `<span class="badge ${t.cls}">${t.label}</span>`).join(' ') : '—'}</td>
       <td>${x.p.contract_date || "—"}</td>
       <td>${x.p.region_mid}</td><td>${x.p.region_sub || "—"}</td><td>${x.p.grade}</td>
-      <td>${fmt(x.agg.appts)}</td><td>${fmt(x.agg.visits)}</td><td>${fmt(x.visits_open)}</td><td>${fmt(x.agg.sales)}</td><td>${fmt(x.agg.revenue)}</td>
+      <td>${fmt(x.agg.appts)}</td><td>${fmt(x.agg.visits)}</td><td>${fmt(x.agg.orders)}</td><td>${fmt(x.agg.sales)}</td>
+      <td>${fmtPct(x.psr)}</td><td>${fmtPct(x.cr3)}</td><td>${fmt(x.visits_open)}</td><td>${fmt(x.agg.revenue)}</td>
       <td class="${pctClass(x.agg.profit)}">${fmt(x.agg.profit)}</td>
       <td class="${pctClass(x.agg.profit_pct)}">${fmtPct(x.agg.profit_pct)}</td>
       <td><span class="badge ${x.periodStatus.cls}">${x.periodStatus.label}</span></td>
@@ -1932,7 +1992,7 @@
   }
   function closeRegionModal() { document.getElementById("regionModalScrim").classList.remove("open"); }
 
-  /* ---------- 검토 필요 파트너 (우선순위 기반) — 상단 기간 필터와 무관, 항상 "완결된 월" 기준 ----------
+  /* ---------- 검토 필요 파트너 (우선순위 기반) — 사이드바 기간 필터와 무관, 항상 "완결된 월" 기준 ----------
      조회 기간(3개월/6개월)은 이 카드 전용 토글(reviewWindowMonths)로 따로 조정 — 상단 전역 기간 필터와 무관.
      사용자 지정(2026-09-15 재개정): 적자 "횟수"가 아니라 완결된 최근 N개월을 합산한 "누적 수익률"
      (=N개월 매출 합계 대비 N개월 profit 합계, 개별 월 평균이 아니라 풀링한 값)이 적자인 파트너만 대상.
@@ -2094,14 +2154,14 @@
     { key: "supply_cost", label: "공급원가 (Supply Cost)", kind: "group" },
     { key: "return_cost", label: "반품비용", kind: "group" },
     { key: "fitting_fee_final", label: "피팅비 (Fitting Fee)", kind: "group" },
-    { key: "cogs", label: "= 매출원가 (COGS) 합계", kind: "subtotal" },
+    { key: "cogs", label: "= 매출원가 (COGS) total", kind: "subtotal" },
     { key: "gross_margin", label: "Gross Margin", kind: "tier" },
     { key: "incentive", label: "인센티브 (상담사+STM)", kind: "group" },
     { key: "payment_process_fee", label: "결제수수료 (매출×3.1%)", kind: "group" },
     { key: "logistics_cost", label: "물류비용", kind: "group" },
-    { key: "marketing_cost", label: "마케팅비 (방문수×31,000원)", kind: "group" },
+    { key: "marketing_cost", label: "마케팅비 (Visits×31,000원)", kind: "group" },
     { key: "royalty", label: "Royalty (매출×0.7%)", kind: "group" },
-    { key: "variable_cost", label: "= 변동비 합계", kind: "subtotal" },
+    { key: "variable_cost", label: "= 변동비 total", kind: "subtotal" },
     { key: "contribution_margin", label: "Contribution Margin", kind: "tier" },
     { key: "overhead_cost", label: "Overhead Cost (매출×15%, 근사치)", kind: "group" },
     { key: "profit", label: "Profit", kind: "tier" },
@@ -2128,7 +2188,7 @@
     pool.forEach(p => { const rec = bucket[p.name]; if (rec) total += rec[field] || 0; });
     return total;
   }
-  // 드릴다운의 Visits_open 전용 — "지금 이 순간 몇 명이 진행중인지"는 상단 기간 필터(L30D/12m 등) 폭과
+  // 드릴다운의 Visits_open 전용 — "지금 이 순간 몇 명이 진행중인지"는 사이드바 기간 필터(L30D/12m 등) 폭과
   // 무관한 사실이어야 하는데, 선택된 labels만 합산하면 필터를 넓힐수록 숫자가 커지는 "누적" 착시가 생김
   // (2026-09-17 사용자 지적 — 실제로는 진행중 고객 수 자체는 안 변해야 함). 그래서 상단 필터는 무시하고
   // PIPELINE_OPEN_DATA가 보유한 전체 기간(월별 12개월 또는 주별 12주, 그래뉴러리티에 따라 다름)을 항상
@@ -2148,29 +2208,49 @@
     const labels = getActivePeriodLabels();
     const pool = marginPool();
     const data = labels.map(lbl => combinedAtLabel(pool, lbl));
-    const ncols = labels.length * 2 + 1;
+    const ncols = (labels.length + 1) * 2 + 1; // +1 = 맨 오른쪽 합계 열
+
+    // 맨 오른쪽 "합계" 열 — 진행중(미완결) 기간은 제외하고 선택된 기간(labels) 중 완결된 것만으로 계산
+    // (2026-09-18 사용자 지정): Leads/Appts/Orders/Sales/금액류는 합산, VR/OR/SR/Bin rate/ABV는 그 기간
+    // 동안 표시된 값들의 단순 평균(월별 비율을 재계산하는 게 아니라 화면에 보인 값 그대로 평균 — 이 대시보드의
+    // 다른 모든 비율은 항상 "합산 후 재계산"이 원칙이지만, 이 합계 열만은 사용자가 명시적으로 단순평균을
+    // 요청함). Appts_open/Visits_open도 합산(진행중 파이프라인 건수 자체는 합산 가능한 카운트).
+    const completeLabels = labels.filter(lbl => !isPartialPeriod(granularity, lbl));
+    const completeData = labels.map((lbl, i) => isPartialPeriod(granularity, lbl) ? null : data[i]).filter(Boolean);
+    const totalAgg = combine(completeData);
+    const avg = arr => { const v = arr.filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+    totalAgg.vr = avg(completeData.map(d => d.vr));
+    totalAgg.or_pct = avg(completeData.map(d => d.or_pct));
+    totalAgg.sr_pct = avg(completeData.map(d => d.sr_pct));
+    totalAgg.binRate = avg(completeData.map(d => d.binRate));
+    totalAgg.abv = avg(completeData.map(d => d.abv));
+    const hasOpenData = granularity === "weekly" || granularity === "monthly";
+    const totalAppsOpen = hasOpenData ? completeLabels.reduce((s, lbl) => s + (pipelineOpenForPool(pool, lbl, "appts_open") || 0), 0) : null;
+    const totalVisitsOpen = hasOpenData ? completeLabels.reduce((s, lbl) => s + (pipelineOpenForPool(pool, lbl, "visits_open") || 0), 0) : null;
 
     document.getElementById("marginTheadRow").innerHTML =
-      `<th rowspan="2">항목</th>` + labels.map(l => `<th colspan="2" title="${l}${isPartialPeriod(granularity, l) ? ' (진행중·미완결)' : ''}">${periodHeaderLabel(l)}</th>`).join("");
+      `<th rowspan="2">항목</th>` + labels.map(l => `<th colspan="2" title="${l}${isPartialPeriod(granularity, l) ? ' (진행중·미완결)' : ''}">${periodHeaderLabel(l)}</th>`).join("") +
+      `<th colspan="2" title="완결된 기간 합계(진행중 기간 제외)">Total</th>`;
     document.getElementById("marginTheadRow2").innerHTML =
-      labels.map(() => `<th style="font-size:10.5px;">금액</th><th style="font-size:10.5px;">%매출</th>`).join("");
+      labels.map(() => `<th style="font-size:10.5px;">금액</th><th style="font-size:10.5px;">%매출</th>`).join("") +
+      `<th style="font-size:10.5px;">금액</th><th style="font-size:10.5px;">%매출</th>`;
 
     // Appts_open/Visits_open — 이제 기간별로 실제 다시 계산(열마다 다른 값, 위 pipelineOpenForPool 참고)
-    const appts_open_row = labels.map(lbl => pipelineOpenForPool(pool, lbl, "appts_open"));
-    const visits_open_row = labels.map(lbl => pipelineOpenForPool(pool, lbl, "visits_open"));
+    const appts_open_row = labels.map(lbl => pipelineOpenForPool(pool, lbl, "appts_open")).concat([totalAppsOpen]);
+    const visits_open_row = labels.map(lbl => pipelineOpenForPool(pool, lbl, "visits_open")).concat([totalVisitsOpen]);
     const funnelRows = [
-      ["Leads", data.map(d => d.leads), null],
-      ["Appts (예약수)", data.map(d => d.appts), null],
+      ["Leads", data.map(d => d.leads).concat([totalAgg.leads]), null],
+      ["Appts", data.map(d => d.appts).concat([totalAgg.appts]), null],
       ["Appts_open (기회전환)", appts_open_row, null],
-      ["VR (방문율)", data.map(d => d.vr), "pct"],
-      ["Visits (방문수)", data.map(d => d.visits), null, true], // 중요 지표 - Revenue처럼 강조표시(사용자 요청, 2026-09-16)
+      ["VR (방문율)", data.map(d => d.vr).concat([totalAgg.vr]), "pct"],
+      ["Visits", data.map(d => d.visits).concat([totalAgg.visits]), null, true], // 중요 지표 - Revenue처럼 강조표시(사용자 요청, 2026-09-16)
       ["Visits_open (미방문 전환)", visits_open_row, null],
-      ["OR (주문율)", data.map(d => d.or_pct), "pct"],
-      ["Orders (주문수)", data.map(d => d.orders), null],
-      ["SR (성공률)", data.map(d => d.sr_pct), "pct"],
-      ["Sales (성공수)", data.map(d => d.sales), null, true], // 중요 지표 - Revenue처럼 강조표시(사용자 요청, 2026-09-16)
-      ["Bin rate (양이율)", data.map(d => d.binRate), "ratio"],
-      ["ABV", data.map(d => d.abv), null],
+      ["OR (주문율)", data.map(d => d.or_pct).concat([totalAgg.or_pct]), "pct"],
+      ["Orders", data.map(d => d.orders).concat([totalAgg.orders]), null],
+      ["SR (성공률)", data.map(d => d.sr_pct).concat([totalAgg.sr_pct]), "pct"],
+      ["Sales (성공수)", data.map(d => d.sales).concat([totalAgg.sales]), null, true], // 중요 지표 - Revenue처럼 강조표시(사용자 요청, 2026-09-16)
+      ["Bin rate (양이율)", data.map(d => d.binRate).concat([totalAgg.binRate]), "ratio"],
+      ["ABV", data.map(d => d.abv).concat([totalAgg.abv]), null],
     ];
     // 퍼널행은 "몇 건"이지 매출의 일부가 아니라 %매출 칸은 runrate와 동일하게 의미 없음("-")으로 비움
     // Bin rate(양이율)는 %가 아니라 1.0~2.0 사이 비율(성공대수/성공명수) — 소수 2자리로 표시
@@ -2184,10 +2264,11 @@
     // runrate 마진 테이블과 동일: 4개 tier 행(Revenue/Gross Margin/Contribution Margin/Profit)의 금액 글씨만
     // 흑자=초록/적자=빨강으로 칠하고, 나머지(공급원가 등 group/subtotal 행)는 기본 잉크색 그대로 둔다.
     // 비용도 원자 데이터 그대로(부호 반전 없이) 양수로 표시 — 위계는 들여쓰기/소계 밑줄로 구분.
+    const dataWithTotal = data.concat([totalAgg]); // mRowHtml은 %매출 계산에 각 열의 revenue가 필요해 totalAgg를 그대로 이어붙임(이미 RAW_FIELDS 전부 합산됨)
     function mRowHtml(row) {
       const cls = row.kind === "tier" ? "tier-row" : row.kind === "subtotal" ? "subtotal-row" : "group-row";
       return `<tr class="${cls}"><th class="sticky-col">${row.label}</th>` +
-        data.map(d => {
+        dataWithTotal.map(d => {
           const v = d[row.key];
           const pctStr = d.revenue ? fmtPct(v / d.revenue * 100) : "—";
           const valCls = row.kind === "tier" ? pctClass(v) : "";
@@ -2439,7 +2520,7 @@
     document.getElementById("btnWeekly").classList.toggle("active", g === "weekly");
     document.getElementById("btnMonthly").classList.toggle("active", g === "monthly");
     document.getElementById("btnYearly").classList.toggle("active", g === "yearly");
-    // 연도별 뷰는 상단 기간 프리셋(L30D 등) 대신 연도 선택 드롭다운을 씀
+    // 연도별 뷰는 사이드바 기간 프리셋(L30D 등) 대신 연도 선택 드롭다운을 씀
     document.getElementById("periodPreset").style.display = g === "yearly" ? "none" : "";
     document.getElementById("yearSelect").style.display = g === "yearly" ? "" : "none";
     renderAll();
@@ -2473,10 +2554,21 @@
   function onSidebarFilterChange() {
     filters.region = document.getElementById("regionFilterSel").value;
     filters.grade = document.getElementById("gradeFilterSel").value;
-    filters.status = document.getElementById("statusFilterSel").value;
     selectedBucketKey = null;
     renderSec1();
     renderSec4();
+  }
+  // Profit%/방문수 필터 — ①에만 적용(④는 교육 전/후 비교라는 별개 기준을 쓰므로 대상 아님). 입력칸이
+  // 비어있으면 parseFloat가 NaN을 주는데, NaN은 매번 필터 조건에서 false 비교가 되어버려 사실상 "전체
+  // 제외"처럼 동작하는 함정이 있어 명시적으로 null 처리.
+  function onMetricFilterChange() {
+    const pv = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+    filters.profitMin = pv("profitMinInput");
+    filters.profitMax = pv("profitMaxInput");
+    filters.visitsMin = pv("visitsMinInput");
+    filters.visitsMax = pv("visitsMaxInput");
+    selectedBucketKey = null;
+    renderSec1();
   }
   function switchSideTab(btn, id) {
     document.querySelectorAll(".side-tabs button").forEach(b => b.classList.remove("active"));
@@ -2492,6 +2584,96 @@
     document.getElementById("sideToggleTab").textContent = sidePanelCollapsed ? "▶" : "◀";
   }
 
+  /* ---------- 테이블 헤더 세로 고정 (JS 클론 방식) ----------
+     CSS position:sticky를 thead/th에 직접 걸면 이 환경에서 헤더행-데이터행 위치가 뒤바뀌는 렌더링 오류가
+     발생해서(2026-09-18, 2회 실패 확인) 대신 스크롤 위치를 감지해 헤더 복제본을 화면 상단(안전영역
+     STICKY_TOP=74, .side-panel과 동일 기준)에 position:fixed로 띄우는 방식으로 재시도. 진짜 테이블/헤더
+     DOM은 전혀 건드리지 않는 순수 오버레이라, 문제가 생기면 이 블록과 마지막의 initStickyHeaders() 호출만
+     지우면 완전히 원상복구됨.
+     - 클론은 매 스크롤 프레임마다 실제 헤더의 innerHTML을 그대로 복사(정렬 등으로 헤더가 다시 그려져도
+       항상 최신 상태 유지)하고, 각 셀 너비를 실제 헤더 셀의 렌더링 폭에 맞춰 강제 지정(표 폭이 auto라
+       그냥 두면 어긋남) — 행 단위로 따로 처리해서 마진표(.pivot)의 2행 헤더(항목/기간×금액·%매출)도
+       그대로 지원.
+     - 가로 스크롤 동기화는 transform이 아니라 클론 래퍼(.sticky-thead-clone, overflow:hidden) 자체의
+       scrollLeft를 실제 표의 scrollLeft에 맞춰 프로그램으로 설정하는 방식 — "진짜 스크롤"이라야 마진표
+       항목열의 기존 CSS(position:sticky;left:0)가 클론 안에서도 똑같이 작동해서 좌측 고정이 유지됨
+       (transform은 스크롤이 아니라 시각적 이동이라 position:sticky와 상호작용이 불안정해서 피함).
+     - 클론 안의 정렬 헤더를 클릭하면 onclick 속성이 그대로 복제돼 있어(cloneNode) 실제 헤더를 클릭한 것과
+       동일하게 전역 onSortClick()이 호출되고 실제 표가 다시 그려짐 — 그 직후 클론도 즉시 새로고침(클릭
+       이벤트가 버블링되는 시점엔 이미 재렌더가 끝난 뒤라 바로 반영 가능). */
+  const STICKY_TOP = 74; // .side-panel/.side-toggle-tab과 동일한 "헤더 아래 안전영역" 값 재사용
+  let stickyEntries = [];
+  let stickyRaf = null;
+  function scheduleStickyUpdate() {
+    if (stickyRaf) return;
+    stickyRaf = requestAnimationFrame(() => { stickyRaf = null; updateStickyHeaders(); });
+  }
+  function updateStickyHeaders() {
+    stickyEntries.forEach(entry => {
+      const rect = entry.scrollEl.getBoundingClientRect();
+      const theadH = entry.thead.getBoundingClientRect().height || entry.cloneWrap.offsetHeight || 0;
+      const shouldShow = rect.top < STICKY_TOP && rect.bottom > STICKY_TOP + theadH && rect.width > 0;
+      if (!shouldShow) {
+        if (entry.cloneWrap.style.display !== "none") entry.cloneWrap.style.display = "none";
+        return;
+      }
+      entry.cloneThead.innerHTML = entry.thead.innerHTML;
+      // 열 너비 고정 — 개별 셀에 style.width만 주는 방식은 표에 tbody 없이 thead만 있으면(=클론) auto
+      // table-layout이 그 힌트를 무시하고 제 마음대로 다시 계산해버려서(2026-09-18, 마진표에서 실측 확인
+      // — 헤더는 좁게 다시 계산되는데 실제 표는 tbody의 긴 숫자 때문에 넓어져서 서로 안 맞았음) <colgroup>+
+      // table-layout:fixed로 열 너비를 못박는 방식으로 교체. 실제 "열"과 1:1 대응하는 건 colspan이 없는
+      // 마지막 헤더행이고, rowspan으로 첫 행에만 걸쳐있는 셀(마진표의 "항목" 열)은 그 앞에 끼워 넣으면
+      // 실제 컬럼 순서와 정확히 일치함(단일행 헤더 표는 rowspan 셀이 없어 이 부분이 그냥 비고 정상 동작).
+      const liveRows = entry.thead.querySelectorAll(":scope > tr");
+      const firstRow = liveRows[0], lastRow = liveRows[liveRows.length - 1];
+      const widths = [];
+      Array.from(firstRow.children).forEach(c => { if (c.rowSpan > 1) widths.push(c.getBoundingClientRect().width); });
+      Array.from(lastRow.children).forEach(c => widths.push(c.getBoundingClientRect().width));
+      const oldColgroup = entry.cloneTable.querySelector("colgroup");
+      if (oldColgroup) oldColgroup.remove();
+      const colgroup = document.createElement("colgroup");
+      let totalW = 0;
+      widths.forEach(w => {
+        const col = document.createElement("col");
+        col.style.width = w + "px";
+        colgroup.appendChild(col);
+        totalW += w;
+      });
+      entry.cloneTable.insertBefore(colgroup, entry.cloneTable.firstChild);
+      entry.cloneTable.style.tableLayout = "fixed";
+      entry.cloneTable.style.width = totalW + "px";
+      entry.cloneWrap.style.display = "block";
+      entry.cloneWrap.style.top = STICKY_TOP + "px";
+      entry.cloneWrap.style.left = rect.left + "px";
+      entry.cloneWrap.style.width = rect.width + "px";
+      entry.cloneWrap.style.height = entry.thead.getBoundingClientRect().height + "px";
+      entry.cloneWrap.scrollLeft = entry.scrollEl.scrollLeft;
+    });
+  }
+  function initStickyHeaders() {
+    // .main-col 안의 표만 대상 — 지역 파트너 팝업(모달) 안의 표는 모달 자체가 뷰포트 스크롤과 무관하게
+    // 떠 있어서 이 고정 로직과 안 맞음(제외).
+    document.querySelectorAll(".main-col .table-scroll").forEach(scrollEl => {
+      const table = scrollEl.querySelector("table.std");
+      if (!table) return;
+      const thead = table.querySelector("thead");
+      if (!thead || !thead.children.length) return;
+      const cloneWrap = document.createElement("div");
+      cloneWrap.className = "sticky-thead-clone";
+      const cloneTable = document.createElement("table");
+      cloneTable.className = table.className;
+      const cloneThead = thead.cloneNode(true);
+      cloneTable.appendChild(cloneThead);
+      cloneWrap.appendChild(cloneTable);
+      document.body.appendChild(cloneWrap);
+      cloneWrap.addEventListener("click", updateStickyHeaders);
+      scrollEl.addEventListener("scroll", scheduleStickyUpdate, { passive: true });
+      stickyEntries.push({ scrollEl, table, thead, cloneWrap, cloneTable, cloneThead });
+    });
+    window.addEventListener("scroll", scheduleStickyUpdate, { passive: true });
+    window.addEventListener("resize", scheduleStickyUpdate);
+  }
+
   /* ---------- init ---------- */
   document.getElementById("bucketDrill").style.display = "none";
   applySectionDesc();
@@ -2500,6 +2682,7 @@
   populateYearSelect();
   syncDateInputsToRange();
   renderAll();
+  initStickyHeaders();
 </script>
 <script>
 /* ── 비밀번호 잠금 (SHA-256, Web Crypto API) — Sales Business Dashboard와 동일 방식 ── */
