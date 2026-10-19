@@ -1,0 +1,26 @@
+# ===== 비밀번호 / 자격증명 =====
+# 이 파일은 절대 커밋 금지 (HTML 게이트의 비밀번호 원본)
+.dashboard_password
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== 데이터/설정 =====
+# 회사 데이터(엑셀)는 커밋하지 않음
+*.xlsm
+*.xlsx
+*.xls
+
+# dbt_*.py 스크립트가 생성하는 대용량 캐시(재생성 가능, dbt_load.py/dbt_compute.py 재실행하면 됨)
+dbt_cache.pkl
+dbt_opp_computed.pkl
+dbt_salesforce_cache.pkl
+
+# 실행 로그
+logs/
+
+# ===== OS/에디터 =====
+.DS_Store
+Thumbs.db
