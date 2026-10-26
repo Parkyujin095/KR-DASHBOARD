@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>파트너 대시보드 허브</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#eef0f4;min-height:100vh}
+#gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px}
+#gate.hidden{display:none}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:44px 48px;width:min(100%,420px);text-align:center}
+.lock{width:60px;height:60px;border-radius:50%;background:#EEF2FF;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.lock svg{width:26px;height:26px;stroke:#1B3A6B;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+h1{font-size:21px;font-weight:800;color:#1a2236;margin-bottom:6px}
+.badge{display:inline-block;background:#EEF2FF;color:#1B3A6B;border-radius:20px;font-size:11px;font-weight:700;padding:3px 12px;margin-bottom:10px}
+.desc{font-size:13px;color:#9ca3af;margin-bottom:28px}
+label{display:block;font-size:12px;font-weight:700;color:#374151;text-align:left;margin-bottom:7px}
+.field{position:relative;margin-bottom:18px}
+input{width:100%;padding:13px 46px 13px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#f9fafb;color:#1f2937;font-family:inherit}
+input:focus{outline:none;border-color:#1B3A6B;background:#fff}
+input::-ms-reveal,input::-ms-clear{display:none}
+.eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;line-height:0}
+.eye svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+button.go{width:100%;background:#1B3A6B;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+button.go:disabled{background:#9ca3af;cursor:not-allowed}
+.err{margin-top:12px;color:#dc2626;font-size:13px;font-weight:700;min-height:18px}
+.back{display:inline-block;margin-top:18px;font-size:12px;color:#9ca3af;text-decoration:none}
+.back:hover{color:#6b7280}
+#loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:14px;color:#6b7280}
+#loading.show{display:flex}
+</style>
+</head>
+<body>
+<div id="gate" class="hidden">
+  <form class="card" id="gForm" autocomplete="off" novalidate>
+    <div class="lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <div class="badge">파트너용</div>
+    <h1>파트너 대시보드 허브</h1>
+    <p class="desc">비밀번호를 입력해주세요.</p>
+    <label for="gPwd">비밀번호</label>
+    <div class="field">
+      <input type="password" id="gPwd" placeholder="비밀번호를 입력하세요" autocomplete="current-password"/>
+      <button type="button" class="eye" id="gEye" aria-label="비밀번호 표시/숨김"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div>
+    <button type="submit" class="go" id="gBtn">확인</button>
+    <div class="err" id="gErr"></div>
+    <a class="back" href="../index.html">&#8592; 처음으로</a>
+  </form>
+</div>
+<div id="loading">불러오는 중...</div>
+<script>
+(function(){
+  var ENC = {"ct": "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", "salt": "+iKbtjPT2ADa3AgRaYMpsw==", "iv": "+2CKt5lPwDVg4Qod", "iter": 250000};
+  var KEY = 'kr_partner_dash_pwd';
+  var IS_HUB = true;
+  var runtimePwd = '';
+  try {
+    var m = (location.hash || '').match(/__pwd__=([^&]+)/);
+    if (m) { runtimePwd = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname + location.search); }
+  } catch(e) {}
+  function ssGet(){ try { return sessionStorage.getItem(KEY) || ''; } catch(e){ return ''; } }
+  function ssSet(v){ try { sessionStorage.setItem(KEY, v); } catch(e){} }
+  function ssDel(){ try { sessionStorage.removeItem(KEY); } catch(e){} }
+  // 같은 역할 페이지로 이동할 때 비밀번호를 hash 로 넘김 (file:// 에서 sessionStorage 가 공유 안 되는 경우 대비)
+  window.__partnerNav__ = function(url){ var p = runtimePwd || ssGet(); location.href = url + (p ? '#__pwd__=' + encodeURIComponent(p) : ''); };
+  window.__partnerLogout__ = function(url){ ssDel(); location.href = url; };
+  function b64d(s){ var b = atob(s), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+  async function decrypt(pwd){
+    var km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pwd), {name:'PBKDF2'}, false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey({name:'PBKDF2', salt:b64d(ENC.salt), iterations:ENC.iter, hash:'SHA-256'},
+                                            km, {name:'AES-GCM', length:256}, false, ['decrypt']);
+    var buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64d(ENC.iv)}, key, b64d(ENC.ct));
+    var ds = new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')));
+    return await ds.text();
+  }
+  function render(html){
+    if (IS_HUB) {   // 허브는 페이지 일부만 교체 (게이트 스크립트·__partnerNav__ 유지)
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('loading').classList.remove('show');
+      var c = document.getElementById('hubContent'); c.innerHTML = html; c.style.display = 'block';
+      return;
+    }
+    document.open(); document.write(html); document.close();
+  }
+  async function tryPwd(pwd){
+    if (!pwd) return false;
+    try { var html = await decrypt(pwd); runtimePwd = pwd; ssSet(pwd); render(html); return true; }
+    catch(e){ return false; }
+  }
+  function showGate(){
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('gate').classList.remove('hidden');
+    var f = document.getElementById('gForm'), inp = document.getElementById('gPwd'), btn = document.getElementById('gBtn');
+    document.getElementById('gEye').onclick = function(){ inp.type = inp.type === 'password' ? 'text' : 'password'; inp.focus(); };
+    f.addEventListener('submit', async function(ev){
+      ev.preventDefault(); document.getElementById('gErr').textContent = '';
+      btn.disabled = true; btn.textContent = '확인 중...';
+      var ok = await tryPwd(inp.value || '');
+      btn.disabled = false; btn.textContent = '확인';
+      if (!ok) { document.getElementById('gErr').textContent = '비밀번호가 올바르지 않습니다.'; inp.value = ''; inp.focus(); }
+    });
+    setTimeout(function(){ try { inp.focus(); } catch(e){} }, 10);
+  }
+  (async function(){
+    if (!window.crypto || !crypto.subtle || typeof DecompressionStream === 'undefined') {
+      document.getElementById('loading').classList.add('show');
+      document.getElementById('loading').textContent = '이 브라우저에서는 열 수 없습니다. 최신 Chrome / Edge 를 사용해주세요.';
+      return;
+    }
+    var cands = [runtimePwd, ssGet()].filter(function(v, i, a){ return v && a.indexOf(v) === i; });
+    if (cands.length) document.getElementById('loading').classList.add('show');
+    for (var i = 0; i < cands.length; i++) { if (await tryPwd(cands[i])) return; }
+    ssDel(); showGate();
+  })();
+})();
+</script>
+<div id="hubContent" style="display:none"></div>
+</body>
+</html>
