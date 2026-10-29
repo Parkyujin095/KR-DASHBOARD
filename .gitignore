@@ -5,4 +5,4 @@
 !Partner/main/map/icon_cache/**
 
 # 보증금 파일럿 대시보드 원본(기회 ID 평문) — 공유는 암호화된 deposit_pilot_share.html 만
-Partner/deepdive/deposit_pilot/dashboard/deposit_pilot_dashboard.html
+Project/deposit_pilot/dashboard/deposit_pilot_dashboard.html
